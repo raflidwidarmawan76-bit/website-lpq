@@ -1,4 +1,4 @@
-﻿let currentTransactionPage = 1;
+let currentTransactionPage = 1;
 
 function loadTransactionsPage() {
     const catSelect = document.getElementById('filter-category');
@@ -229,6 +229,10 @@ function saveTransaction(event, editId) {
     }
     
     setData('lpq_transactions', transactions);
+    if (window.db) {
+        const t = editId ? transactions.find(x => x.id === editId) : transactions[transactions.length - 1];
+        if (t) window.db.collection('transactions').doc(t.id).set(t).catch(console.error);
+    }
     closeModal();
     loadTransactionsPage();
     if (typeof loadDashboard === 'function') {
@@ -244,6 +248,7 @@ function deleteTransaction(id) {
     let transactions = getData('lpq_transactions') || [];
     const tx = transactions.find(t => t.id === id);
     setData('lpq_transactions', transactions.filter(t => t.id !== id));
+    if (window.db) { window.db.collection('transactions').doc(id).delete().catch(console.error); }
     if (tx) logActivity('delete_transaction', `Hapus transaksi: ${tx.description}`);
     showToast('Transaksi dihapus!', 'success');
     loadTransactionsPage();

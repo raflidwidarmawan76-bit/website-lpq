@@ -1,4 +1,4 @@
-﻿function loadBudgetPage() {
+function loadBudgetPage() {
     populateBudgetMonthSelect();
     renderBudgetTable();
 }
@@ -180,6 +180,10 @@ function saveBudget(event, editId) {
     }
     
     setData('lpq_budgets', budgets);
+    if (window.db) {
+        const b = editId ? budgets.find(x => x.id === editId) : budgets[budgets.length - 1];
+        if (b) window.db.collection('budgets').doc(b.id).set(b).catch(console.error);
+    }
     closeModal();
     showToast('Anggaran disimpan!');
     renderBudgetTable();
