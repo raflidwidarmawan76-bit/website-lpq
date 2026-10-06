@@ -64,11 +64,11 @@ function renderTransactions(filteredData) {
         tr.innerHTML = `
             <td>${startIndex + i + 1}</td>
             <td>${formatDate(t.date)}</td>
-            <td>${t.description}</td>
+            <td>${t.description || '-'}</td>
             <td><span class="badge bg-secondary">${t.category}</span></td>
-            <td><span class="badge "></span></td>
-            <td></td>
-            <td class=" font-weight-bold"> </td>
+            <td><span class="badge ${t.type === 'income' ? 'bg-success' : 'bg-danger'}">${typeLabel}</span></td>
+            <td>${t.wallet || '-'}</td>
+            <td class="${color} font-weight-bold">${sign} ${formatCurrency(t.amount)}</td>
             <td>
                 <button class="btn btn-sm btn-outline-primary" onclick="openTransactionModal('${t.id}')"><i class="fas fa-edit"></i></button>
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteTransaction('${t.id}')"><i class="fas fa-trash"></i></button>
