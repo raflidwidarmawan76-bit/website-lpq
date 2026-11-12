@@ -3,18 +3,26 @@ let currentTransactionPage = 1;
 function loadTransactionsPage() {
     const catSelect = document.getElementById('filter-category');
     if (catSelect) {
+        const currentCat = catSelect.value;
         catSelect.innerHTML = '<option value="">Semua Kategori</option>';
         ALL_CATEGORIES.forEach(c => {
             catSelect.innerHTML += `<option value="${c}">${c}</option>`;
         });
+        if (currentCat) catSelect.value = currentCat;
     }
     
-    const monthSelect = document.getElementById('filter-month');
-    if (monthSelect && !monthSelect.value) {
-        const now = new Date();
-        monthSelect.value = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
-    }
-    
+    filterTransactions();
+}
+
+function resetTransactionFilters() {
+    const searchEl = document.getElementById('filter-search');
+    const typeEl = document.getElementById('filter-type');
+    const catEl = document.getElementById('filter-category');
+    const monthEl = document.getElementById('filter-month');
+    if (searchEl) searchEl.value = '';
+    if (typeEl) typeEl.value = '';
+    if (catEl) catEl.value = '';
+    if (monthEl) monthEl.value = '';
     filterTransactions();
 }
 
@@ -28,25 +36,32 @@ function filterTransactions() {
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
     
     const filtered = transactions.filter(t => {
-        const matchSearch = t.description.toLowerCase().includes(search) || t.amount.toString().includes(search);
+        const desc = (t.description || '').toLowerCase();
+        const cat = (t.category || '').toLowerCase();
+        const amt = (t.amount !== undefined && t.amount !== null) ? t.amount.toString() : '';
+        const matchSearch = desc.includes(search) || cat.includes(search) || amt.includes(search);
         const matchType = type ? t.type === type : true;
         const matchCategory = category ? t.category === category : true;
-        const matchMonth = month ? t.date.startsWith(month) : true;
+        const matchMonth = month ? (t.date && t.date.startsWith(month)) : true;
         return matchSearch && matchType && matchCategory && matchMonth;
     });
     
     currentTransactionPage = 1;
-    renderTransactions(filtered);
+    renderTransactions(filtered, transactions.length);
 }
 
-function renderTransactions(filteredData) {
+function renderTransactions(filteredData, totalAllCount = 0) {
     const tbody = document.getElementById('transactions-tbody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
     
     if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Data tidak ditemukan</td></tr>';
+        if (totalAllCount > 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center">Tidak ada transaksi pada filter bulan/pencarian ini. <button type="button" class="btn btn-sm btn-outline" style="margin-left:8px;" onclick="resetTransactionFilters()">Tampilkan Semua (${totalAllCount} Transaksi)</button></td></tr>`;
+        } else {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">Data tidak ditemukan</td></tr>';
+        }
         renderPagination(0);
         return;
     }
@@ -187,7 +202,7 @@ function openTransactionModal(editId = null) {
             document.getElementById('tx-description').value = t.description;
         }
     } else {
-        document.getElementById('tx-date').value = new Date().isoString().split('T')[0];
+        document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
     }
 }
 
@@ -215,8 +230,17 @@ function saveTransaction(event, editId) {
     if (editId) {
         const index = transactions.findIndex(t => t.id === editId);
         if (index > -1) {
-            transactions[index] = { ...transactions[index], type, category, wallet, amount, date, description };
-            logActivity('edit_transaction', `Edit transaksi: ${description}`);
+            transactions[index] = {
+                ...transactions[index],
+                type,
+                category,
+                wallet,
+                amount,
+                date,
+                description,
+                updatedAt: new Date().toISOString()
+            };
+            logActivity('edit_transaction', `Edit transaksi: ${description || category} (${formatCurrency(amount)})`);
             showToast('Transaksi berhasil diperbarui!');
         }
     } else {
@@ -224,14 +248,21 @@ function saveTransaction(event, editId) {
             id: generateId(), type, category, wallet, amount, date, description,
             createdBy: user ? user.id : 'unknown', createdAt: new Date().toISOString()
         });
-        logActivity('add_transaction', `Tambah transaksi: ${description}`);
+        logActivity('add_transaction', `Tambah transaksi: ${description || category} (${formatCurrency(amount)})`);
         showToast('Transaksi berhasil ditambahkan!');
     }
     
+    localStorage.removeItem('lpq_manual_reset');
     setData('lpq_transactions', transactions);
+    localStorage.setItem('lpq_transactions_backup', JSON.stringify(transactions));
     if (window.db) {
         const t = editId ? transactions.find(x => x.id === editId) : transactions[transactions.length - 1];
-        if (t) window.db.collection('transactions').doc(t.id).set(t).catch(console.error);
+        if (t) {
+            window.db.collection('transactions').doc(t.id).set(t).catch(err => {
+                console.error('Gagal menyimpan transaksi ke Firebase:', err);
+                if (typeof queuePendingSync === 'function') queuePendingSync('transactions', 'set', t);
+            });
+        }
     }
     closeModal();
     loadTransactionsPage();
@@ -247,9 +278,17 @@ function deleteTransaction(id) {
     if (!confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) return;
     let transactions = getData('lpq_transactions') || [];
     const tx = transactions.find(t => t.id === id);
-    setData('lpq_transactions', transactions.filter(t => t.id !== id));
-    if (window.db) { window.db.collection('transactions').doc(id).delete().catch(console.error); }
-    if (tx) logActivity('delete_transaction', `Hapus transaksi: ${tx.description}`);
+    const updated = transactions.filter(t => t.id !== id);
+    setData('lpq_transactions', updated);
+    localStorage.setItem('lpq_transactions_backup', JSON.stringify(updated));
+    if (typeof markItemDeleted === 'function') markItemDeleted(id);
+    if (window.db) {
+        window.db.collection('transactions').doc(id).delete().catch(err => {
+            console.error('Gagal menghapus transaksi di Firebase:', err);
+            if (typeof queuePendingSync === 'function') queuePendingSync('transactions', 'delete', { id });
+        });
+    }
+    if (tx) logActivity('delete_transaction', `Hapus transaksi: ${tx.description || tx.category}`);
     showToast('Transaksi dihapus!', 'success');
     loadTransactionsPage();
 }

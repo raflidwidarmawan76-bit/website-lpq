@@ -1,4 +1,4 @@
-﻿function toggleAdminPanel() {
+function toggleAdminPanel() {
     const user = getData('lpq_current_user');
     if (!user || user.role !== 'admin') {
         showToast('Akses ditolak! Hanya Administrator yang dapat membuka panel ini.', 'error');
@@ -123,10 +123,11 @@ function adminSaveUser(event) {
         return;
     }
     
-    users.push({
+    const newUser = {
         id: generateId(), fullName: name, email: email, password: pass, role: role,
         status: 'active', createdAt: new Date().toISOString()
-    });
+    };
+    users.push(newUser);
     
     setData('lpq_users', users);
     
@@ -174,6 +175,7 @@ function deleteUser(userId) {
     let users = getData('lpq_users') || [];
     users = users.filter(u => u.id !== userId);
     setData('lpq_users', users);
+    if (typeof markItemDeleted === 'function') markItemDeleted(userId);
     
     // FIREBASE SYNC
     if (window.db) {
@@ -332,8 +334,11 @@ function resetAllTransactionData() {
         return;
     }
     
+    localStorage.setItem('lpq_manual_reset', 'true');
     setData('lpq_transactions', []);
     setData('lpq_budgets', []);
+    localStorage.setItem('lpq_transactions_backup', '[]');
+    localStorage.setItem('lpq_budgets_backup', '[]');
     
     // FIREBASE SYNC - Wipe collections
     if (window.db) {

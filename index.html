@@ -776,8 +776,11 @@
             </div>
             <div class="settings-card">
               <h4><i class="fas fa-database"></i> Data</h4>
-              <p>Kelola data aplikasi Anda.</p>
-              <div class="settings-actions">
+              <p>Kelola dan amankan data aplikasi Anda.</p>
+              <div class="settings-actions" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <button class="btn btn-primary" onclick="recoverLastTransactions()">
+                  <i class="fas fa-sync-alt"></i> Pulihkan & Sinkronkan Data
+                </button>
                 <button class="btn btn-outline" onclick="exportAllData()">
                   <i class="fas fa-download"></i> Backup Data
                 </button>

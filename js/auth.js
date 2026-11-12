@@ -1,4 +1,4 @@
-﻿function showAuth(formType) {
+function showAuth(formType) {
     showPage('auth-page');
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
@@ -90,41 +90,10 @@ function handleRegister(event) {
     
     // FIREBASE SYNC
     if (window.db) {
-        window.db.collection('users').doc(newUser.id).set(newUser).catch(console.error);
-    }
-    
-    // Auto-generate sample data if this is the very first user to give a better first impression
-    if (users.length === 1) {
-        let txs = getData('lpq_transactions') || [];
-        if (txs.length === 0) {
-            const now = new Date();
-            for (let i = 0; i < 30; i++) {
-                const d = new Date(now.getFullYear(), now.getMonth() - Math.floor(Math.random() * 3), Math.floor(Math.random() * 28) + 1);
-                const isIncome = Math.random() > 0.4;
-                let cat, amount, desc;
-                
-                if (isIncome) {
-                    cat = INCOME_CATEGORIES[Math.floor(Math.random() * INCOME_CATEGORIES.length)];
-                    amount = Math.floor(Math.random() * 20 + 1) * 50000;
-                    desc = `Pemasukan ${cat} (Sampel Awal)`;
-                } else {
-                    cat = EXPENSE_CATEGORIES[Math.floor(Math.random() * EXPENSE_CATEGORIES.length)];
-                    amount = Math.floor(Math.random() * 40 + 1) * 25000;
-                    desc = `Pengeluaran ${cat} (Sampel Awal)`;
-                }
-                
-                txs.push({
-                    id: 'sample_' + Math.random().toString(36).substr(2, 9),
-                    type: isIncome ? 'income' : 'expense',
-                    category: cat, amount: amount,
-                    date: d.toISOString().split('T')[0],
-                    description: desc,
-                    createdBy: newUser.id,
-                    createdAt: d.toISOString()
-                });
-            }
-            setData('lpq_transactions', txs);
-        }
+        window.db.collection('users').doc(newUser.id).set(newUser).catch(err => {
+            console.error('Error syncing user:', err);
+            if (typeof queuePendingSync === 'function') queuePendingSync('users', 'set', newUser);
+        });
     }
 
     logActivity('register', `User baru didaftarkan: ${newUser.fullName} (${newUser.role})`);

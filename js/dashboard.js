@@ -10,34 +10,36 @@ function loadDashboard() {
 
 function updateStatCards() {
     const transactions = getData('lpq_transactions') || [];
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
     
-    let income = 0;
-    let expense = 0;
-    let count = 0;
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let totalCount = transactions.length;
     
     transactions.forEach(t => {
-        const tDate = new Date(t.date);
-        if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-            if (t.type === 'income') income += Number(t.amount);
-            if (t.type === 'expense') expense += Number(t.amount);
-            count++;
-        }
+        const amount = Number(t.amount) || 0;
+        if (t.type === 'income') totalIncome += amount;
+        if (t.type === 'expense') totalExpense += amount;
     });
     
-    const balance = income - expense;
+    const balance = totalIncome - totalExpense;
     
     const elIncome = document.getElementById('stat-income');
     const elExpense = document.getElementById('stat-expense');
     const elBalance = document.getElementById('stat-balance');
     const elCount = document.getElementById('stat-count');
     
-    if (elIncome) animateCounter(elIncome, income, true);
-    if (elExpense) animateCounter(elExpense, expense, true);
+    const elIncomePeriod = document.getElementById('stat-income-period');
+    const elExpensePeriod = document.getElementById('stat-expense-period');
+    const elCountPeriod = document.getElementById('stat-count-period');
+    
+    if (elIncomePeriod) elIncomePeriod.textContent = 'Akumulasi semua periode';
+    if (elExpensePeriod) elExpensePeriod.textContent = 'Akumulasi semua periode';
+    if (elCountPeriod) elCountPeriod.textContent = 'Total seluruh transaksi';
+    
+    if (elIncome) animateCounter(elIncome, totalIncome, true);
+    if (elExpense) animateCounter(elExpense, totalExpense, true);
     if (elBalance) animateCounter(elBalance, balance, true);
-    if (elCount) animateCounter(elCount, count, false);
+    if (elCount) animateCounter(elCount, totalCount, false);
 }
 
 function animateCounter(element, target, isCurrency) {
@@ -176,7 +178,7 @@ function loadRecentTransactions() {
     
     tbody.innerHTML = '';
     if (recent.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Belum ada transaksi</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Belum ada transaksi</td></tr>';
         return;
     }
     
@@ -187,11 +189,11 @@ function loadRecentTransactions() {
         const typeLabel = t.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
         tr.innerHTML = `
             <td>${formatDate(t.date)}</td>
-            <td>${t.description}</td>
-            <td><span class="badge ${t.type === 'income' ? 'bg-success' : 'bg-danger'}">${t.category}</span></td>
-            <td><span class="badge "></span></td>
-            <td></td>
-            <td class=" font-weight-bold"> </td>
+            <td>${t.description || '-'}</td>
+            <td><span class="badge bg-secondary">${t.category}</span></td>
+            <td><span class="badge ${t.type === 'income' ? 'bg-success' : 'bg-danger'}">${typeLabel}</span></td>
+            <td>${t.wallet || '-'}</td>
+            <td class="${color} font-weight-bold">${sign} ${formatCurrency(t.amount)}</td>
         `;
         tbody.appendChild(tr);
     });

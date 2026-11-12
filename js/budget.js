@@ -191,7 +191,10 @@ function saveBudget(event, editId) {
 
 function deleteBudget(id) {
     if (!confirm('Hapus anggaran ini?')) return;
-    setData('lpq_budgets', (getData('lpq_budgets') || []).filter(b => b.id !== id));
+    const updated = (getData('lpq_budgets') || []).filter(b => b.id !== id);
+    setData('lpq_budgets', updated);
+    localStorage.setItem('lpq_budgets_backup', JSON.stringify(updated));
+    if (typeof markItemDeleted === 'function') markItemDeleted(id);
     
     // FIREBASE SYNC
     if (window.db) {

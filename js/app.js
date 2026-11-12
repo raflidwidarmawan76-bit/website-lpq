@@ -1,4 +1,4 @@
-﻿// ===== CONSTANTS =====
+// ===== CONSTANTS =====
 const INCOME_CATEGORIES = ['SPP Santri', 'Infaq', 'Donasi', 'Dana BOS', 'Wakaf', 'Zakat', 'Hibah', 'Pendapatan Lain-lain'];
 const EXPENSE_CATEGORIES = ['Gaji Pengajar', 'Gaji Staff', 'Listrik & Air', 'ATK & Perlengkapan', 'Kegiatan Belajar', 'Pemeliharaan Gedung', 'Konsumsi', 'Transportasi', 'Kegiatan Keagamaan', 'Pengeluaran Lain-lain'];
 const ALL_CATEGORIES = [...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES];
@@ -39,6 +39,11 @@ function initApp() {
     // Set default theme
     const settings = getData('lpq_settings') || { theme: 'light' };
     setTheme(settings.theme);
+
+    // Restore from local backup first if primary keys were cleared
+    if (typeof restoreFromLocalBackupIfNeeded === 'function') {
+        restoreFromLocalBackupIfNeeded();
+    }
 
     // Initialize empty arrays if they don't exist
     if (!getData('lpq_users')) setData('lpq_users', []);
